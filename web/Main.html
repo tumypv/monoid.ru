@@ -1,0 +1,290 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>${Title}</title>
+
+    <link rel="stylesheet" href="/Content/prism.css">
+    <script src="/Scripts/prism.js"></script>
+
+<!-- Place your Yandex.Metrika script here -->
+
+    <style>
+        /* Sticky footer styles */
+        html {
+            position: relative;
+            min-height: 100%;
+        }
+
+        body {
+            /* Margin bottom by footer height */
+            margin-bottom: 60px;
+        }
+
+        .footer {
+            /* Set the fixed height of the footer here */
+            height: 60px;
+            background-color: #707070;
+            margin-top: 20px;
+            margin-left: 50px;
+            margin-right: 50px;
+        }
+
+        .container .text-muted {
+            padding-top: 20px;
+            margin-top: 0px;
+            margin-left: 20px;
+            color: white;
+        }
+
+        table.hall {
+            border-collapse: collapse;
+            table-layout: fixed;
+            width: 0px;
+            margin: auto;
+        }
+
+            table.hall td {
+                border: 1px solid #ccc;
+                text-align: center;
+            }
+
+            table.hall th.row-header {
+                border: 1px solid #ccc;
+            }
+
+            table.hall th.rotate {
+                width: 25px;
+                white-space: nowrap;
+                height: 120px;
+                vertical-align: bottom;
+            }
+
+                table.hall th.rotate > div {
+                    transform: translate(16px, -4px) rotate(315deg);
+                }
+
+                    table.hall th.rotate > div > span {
+                        text-align: left;
+                        display: inline-block;
+                        width: 150px;
+                        border-bottom: 1px solid #ccc;
+                    }
+
+        table.check_results {
+            border-collapse: collapse;
+        }
+
+        table.check_results th, table.check_results td {
+            padding: 8px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        nav ul {
+            list-style-type: none;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #333;
+            margin-left: 50px;
+            margin-right: 50px;
+        }
+
+        nav li {
+            float: left;
+        }
+
+        nav li a {
+            display: block;
+            color: white;
+            text-align: center;
+            padding: 14px 16px;
+            text-decoration: none;
+        }
+
+        nav li a:hover {
+            color: white;
+            background-color: #111;
+        }
+
+        nav li.active {
+            color: white;
+            background-color: #555;
+        }
+
+        nav a:link {
+            color: white;
+        }
+
+        nav a:visited {
+            color: white;
+        }
+
+        a:link {
+            color: #303030;
+        }
+
+        a:visited {
+            color: #303030;
+        }
+
+        a:hover {
+            color: black;
+        }
+
+        a:active {
+            color: black;
+        }
+    </style>
+</head>
+<body>
+    <img src="/Content/monoid.png" style="margin-left: 55px;" />
+    <!-- Static navbar -->
+    <nav class="navbar navbar-default navbar-static-top">
+        <div class="container">
+            <!--<div class="navbar-header">
+                <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+                    <span class="sr-only">Toggle navigation</span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+                <a class="navbar-brand" href="#">Your App</a>
+            </div>-->
+            <div id="navbar" class="navbar-collapse collapse">
+                <ul class="nav navbar-nav" ws-hole="MenuBar"></ul>
+                <!--<ul class="nav navbar-nav navbar-right">
+                    <li><a href="http://websharper.com">websharper.com</a></li>
+                </ul>-->
+            </div><!--/.nav-collapse -->
+        </div>
+    </nav>
+    <!--<div class="container">
+        <div ws-replace="Body">
+        </div>
+    </div>-->
+
+    <div class="container" ws-hole="Body">
+        <div ws-template="HomeTemplate">
+            <br />
+            <div style="width:600px;margin: auto;padding-bottom:1000px;">
+                <p>
+                    Monoid.ru — это электронный учебник по функциональному программированию на F# (произносится эф-шарп).
+                    Сайт в стадии разработки и наполнения, пока здесь совсем нет обучающих материалов и совсем немного задач.
+                    Зато работает автоматическая проверка решений и есть зал славы, в котом можно сравнить свои успехи в решении задач сайта
+                    с успехами других пользователей.
+                </p>
+            </div>
+        </div>
+        <div ws-template="ProblemTemplate">
+            <table style="width:1000px;margin-top:10px;" border="0" align="center" cellpadding="0" cellspacing="0">
+                <tr height=19>
+                    <td width="1px"></td>
+                    <td width="12px" bgcolor="#333333"></td>
+                    <td width="600px" bgcolor="#BBBBBB" align="center">
+                        ЗАДАЧА №${ProblemId}
+                    </td>
+                    <td width="12px" bgcolor="#333333"></td>
+                    <td width="1px"></td>
+                </tr>
+                <tr bgcolor="#f0f0f0">
+                    <td></td>
+                    <td colspan="3" style="BORDER-BOTTOM: #303030 1px dashed;  BORDER-left: #303030 1px dashed;BORDER-right: #303030 1px dashed; padding: 3px" height=100%>
+                        <h1>${Title}</h1>
+                        <div ws-replace="Description" />
+
+                        <h2>Входные данные</h2>
+                        <div ws-replace="InputFormat" />
+
+                        <h2>Выходные данные</h2>
+                        <div ws-replace="OutputFormat" />
+
+                        <h2>Примеры</h2>
+
+                        <table style="background-color:white;border-collapse:collapse" border="1">
+                            <tr><th width=30>№</th><th width="200">INPUT.TXT</th><th width="200">OUTPUT.TXT</th></tr>
+                            <tr ws-template="ExampleTemplate" ws-replace="ProblemExample">
+                                <td align=right valign="top" style="padding:5px"><pre style="margin:0">${ExampleN}</pre></td>
+                                <td valign="top" style="padding:5px"><pre style="margin:0">${ExampleInput}</pre></td>
+                                <td valign="top" style="padding:5px"><pre style="margin:0">${ExampleOutput}</pre></td>
+                            </tr>
+                        </table>
+                        <br>
+
+                        <h2>Отправленные решения</h2>
+                        <div ws-replace="PreviousSolutions"></div>
+
+                        <h2>Отправить решение</h2>
+                        <div ws-replace="MySolution"></div>
+                        <!--<form action="/problem" method="post" enctype="application/x-www-form-urlencoded">
+                            Исходный код решения:<br/>
+                            <textarea name=source maxlength=65536 cols="80" rows="25">${Source}</textarea>
+                            <input type="hidden" name="id" value="${ProblemId}"/>
+                            <input type="submit" value="Отправить">
+                        </form>-->
+                    </td>
+                    <td></td>
+                </tr>
+                <tr height=2><td colspan=5></td></tr>
+            </table>
+        </div>
+
+        <div ws-template="SolutionTemplate" style="margin-left:100px;margin-right:100px;margin-bottom:1000px;">
+            <h2>Исходный код решения</h2>
+            <pre class="line-numbers"><code class="language-fsharp"><span ws-replace="MySolution"></span></code></pre>
+            <pre>${Error}</pre>
+        </div>
+
+        <div ws-template="MyProblems">
+            <table class="check_results" align="center">
+                <tr>
+                    <td colspan="4">
+                        <h1>Добро пожаловать, ${Username}!</h1>
+                        <p><a href="/logout">выйти</a></p>
+                        <h2>Ваши задачи:</h2>
+                    </td>
+                </tr>
+                <tr>
+                    <th width=30 style="text-align:right;">№</th>
+                    <th width=200>Название</th>
+                    <th width=100>Принято</th>
+                    <th width=100>Многословность</th>
+                </tr>
+                <tr ws-template="MyProblemsTemplate" ws-replace="MyProblems">
+                    <td style="text-align:right;">${ProblemN}</td>
+                    <td><div ws-replace="ProblemTitle" /></td>
+                    <td><div ws-replace="AcceptedSolution" /></td>
+                    <td style="text-align:right;">${Verbosity}</td>
+                </tr>
+            </table>
+        </div>
+        <div ws-template="ProblemsTemplate">
+            <div ws-replace="MyContent"></div>
+        </div>
+        <div ws-template="LoginTemplate" style="margin-left:55px; padding-bottom:1000px">
+            <h1>Вход не выполнен!</h1>
+            <p>Чтобы начать решать задачи, нужно войти через:</p>
+            <p>
+                <a href="${GitHubLoginUrl}" class="btn btn-primary">
+                    <i class="fab fa-github"></i>GitHub
+                </a>
+                или
+                <a href="${VkLoginUrl}" class="btn btn-primary">
+                    <i class="fab fa-vk"></i>VK
+                </a>
+            </p>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <div class="container">
+            <p class="text-muted">
+                &#9400; 2018 Тимур Вишняков
+            </p>
+        </div>
+    </footer>
+
+    <script ws-replace="scripts"></script>
+</body>
+</html>
