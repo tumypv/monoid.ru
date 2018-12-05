@@ -3,6 +3,7 @@ open System.IO
 open System.Diagnostics
 open monoid.Database
 open monoid.DataModel.Problem
+open Microsoft.FSharp.Compiler.SourceCodeServices
 
 let compilerPath = @"C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\Common7\IDE\CommonExtensions\Microsoft\FSharp\fsc.exe"
 
@@ -132,6 +133,45 @@ let cleanupSandboxDir sandboxDir =
             elif Directory.Exists item then Directory.Delete (item, true)
         Seq.iter delete entries
 
+
+let calcLengthScore (source: string) : int * int =
+    let sourceTok = FSharpSourceTokenizer([], Some "")
+
+    let tokenizeLine lst state line =
+        let tokenizer = sourceTok.CreateLineTokenizer line
+        let rec doWork acc state = 
+            match tokenizer.ScanToken(state) with
+            | Some tok, nstate -> doWork (tok :: acc) nstate
+            | None, nstate -> acc, nstate
+        doWork lst state
+
+    let allTokens =
+        let folder (tt, s) l =
+            let tokens, state = tokenizeLine tt s l
+            (tokens, state)
+        source.Replace("\r", "").Split "\n"
+        |> Seq.fold folder ([], 0L) 
+        |> fst
+        |> List.rev
+
+    let codeTokens =
+        allTokens
+        |> Seq.filter (fun l -> 
+            l.CharClass <> FSharpTokenCharKind.Comment 
+            && l.CharClass <> FSharpTokenCharKind.WhiteSpace
+            && l.CharClass <> FSharpTokenCharKind.LineComment
+            && l.CharClass <> FSharpTokenCharKind.String
+            && l.CharClass <> FSharpTokenCharKind.Literal
+        )
+        |> Seq.length
+
+    let literals = 
+        allTokens
+        |> Seq.filter (fun l -> l.CharClass = FSharpTokenCharKind.String || l.CharClass = FSharpTokenCharKind.Literal)
+        |> Seq.sumBy(fun t -> t.FullMatchedLength)
+    
+    codeTokens, literals
+
 let check (db: DB) (solution: SolutionToCheck) =
     let sandboxDir = Path.Combine (AppDomain.CurrentDomain.BaseDirectory, "sandbox")
     do cleanupSandboxDir sandboxDir
@@ -157,14 +197,16 @@ let check (db: DB) (solution: SolutionToCheck) =
         | RuntimeError s ->
             db.SaveTestResult solution.id test.id 0 "runtime_error" s; false
 
+    let tokenCount, literalLength = calcLengthScore solution.source
+
     match buildResult with
     | Success t ->
         let passed = runInSandbox sandboxDir exePath solution processTestResult
-        db.CheckSolutionEnd solution.id None
+        db.CheckSolutionEnd solution.id None tokenCount literalLength
     | Error e ->
-        db.CheckSolutionEnd solution.id (Some e.message)
+        db.CheckSolutionEnd solution.id (Some e.message) tokenCount literalLength
     | Timeout ->
-        db.CheckSolutionEnd solution.id None
+        db.CheckSolutionEnd solution.id None tokenCount literalLength
 
 let loop () =
     use db = new DB "host=<your_db_host>;port=3306;user id=<your_checker_user>;password=<your_checker_password>;database=fsharp;"
@@ -173,7 +215,7 @@ let loop () =
         let solution = db.CheckSolutionBegin ()
         match solution with
         | Some s -> check db s
-        | _ -> None
+        | _ -> ()
         System.Threading.Thread.Sleep(1000)
         printf "."
         mainLoop ()
@@ -184,4 +226,5 @@ let rec main argv =
     try
         loop()
     with 
-    | :? System.Exception -> main argv
+    | :? System.Exception as ex   -> printfn "%s" ex.Message
+    main argv

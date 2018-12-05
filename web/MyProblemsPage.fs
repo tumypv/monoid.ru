@@ -28,11 +28,11 @@ module Server =
                         text problem.title
                     ]
 
-                let problemState, verbosity = 
+                let problemState, conciseness = 
                     let s =
                         solutions
                         |> Seq.where (fun s -> s.verdict = "accepted") 
-                        |> Seq.map (fun s -> s, calcVerbosityScore s.verbosity)
+                        |> Seq.map (fun s -> s, calcConcisenessScore s.conciseness)
                         |> Seq.sortBy (fun (s, v) -> v)
                         |> Seq.tryHead
 
@@ -48,7 +48,7 @@ module Server =
                     .ProblemN(string problem.id)
                     .ProblemTitle(problemLink)
                     .AcceptedSolution(problemState)
-                    .Verbosity(verbosity)
+                    .Conciseness(conciseness)
                     .Doc()
 
             List.map fillRow (db.GetProblems ())

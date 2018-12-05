@@ -74,7 +74,7 @@ module Client =
                                 | _ -> ""
                             )
                         ]
-                        td [] [text (Utils.calcVerbosityScore s.verbosity |> string)]
+                        td [] [text (Utils.calcConcisenessScore s.conciseness |> string)]
                     ]
 
                 table [attr.``class`` "check_results"] (
@@ -82,7 +82,7 @@ module Client =
                         th [] [text "Время отправки"]
                         th [] [text "Результат проверки"]
                         th [] [text "№ теста"]
-                        th [] [text "Многословность"]
+                        th [] [text "Краткость"]
                     ] :: (
                         solutions 
                         |> List.sortBy (fun s -> s.submitDate)

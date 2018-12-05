@@ -10,6 +10,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="FSharp.Compiler.Service" Version="25.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Database\Database.fsproj" />
     <ProjectReference Include="..\sandboxer\sandboxer.fsproj" />
   </ItemGroup>

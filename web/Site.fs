@@ -13,8 +13,6 @@ open monoid.DataModel
 open monoid.Routes
 open monoid.Authentication
 
-open monoid.DataModel.User
-
 type SecuredPage<'a> = Context<EndPoint> -> User.UserBasicInfo -> Async<Content<'a>>
 
 type Site(config: IConfiguration) =
@@ -62,7 +60,7 @@ type Site(config: IConfiguration) =
             | EndPoint.Problem taskId -> return! securedPage ctx (ProblemPage.Server.Content taskId)
             | EndPoint.MyProblems -> return! securedPage ctx MyProblemsPage.Server.Content
             | EndPoint.EditProblem taskId -> return! securedPage ctx (EditProblemPage.Server.Content taskId)
-            | EndPoint.HallOfFame -> return! (HallOfFamePage.Server.Content ctx { id=0; fullName="" })
+            | EndPoint.HallOfFame -> return! securedPage ctx (HallOfFamePage.Server.Content)
             | EndPoint.Solution solutionId  -> return! securedPage ctx (SolutionPage.Server.Content solutionId)
             | EndPoint.Logout -> return! LogoutPage ctx
             // This is already handled by Auth.Sitelet above:

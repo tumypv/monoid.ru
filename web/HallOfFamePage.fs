@@ -30,8 +30,8 @@ module Server =
             hallOfFameRaw
             |> Seq.groupBy (fun r -> r.problem)
             |> Seq.map (fun (k, v) -> 
-                let mm = v |> Seq.minBy (fun r -> calcVerbosityScore r.verbosity)
-                let vv = calcVerbosityScore mm.verbosity
+                let mm = v |> Seq.minBy (fun r -> calcConcisenessScore r.conciseness)
+                let vv = calcConcisenessScore mm.conciseness
                 mm.problem, (mm.user, vv)
             )
             |> Map.ofSeq
@@ -44,22 +44,22 @@ module Server =
                 let isBest = best |> Option.map (fun (user, _) -> user = u.id)
                 let attr =
                     if Option.defaultValue false isBest then
-                        [attr.style "background-color:yellow;"]
+                        [attr.``class`` "best-cons"]
                     else
                         []
                 td attr [text (if hallOfFame.ContainsKey (p.id, u.id) then "+" else "")]
             tr [] (
                 th [attr.``class`` "row-header"] [text p.title] 
-                :: td [] [text (best |> Option.map (fun (u, v) -> string v) |> Option.defaultValue "")]
+                :: th [attr.``class`` "row-header"] [text (best |> Option.map (fun (u, v) -> string v) |> Option.defaultValue "")]
                 :: List.map makeCell users)
 
 
         let rows = 
             let head = 
                 tr [] (
-                    th [attr.width "150px" ] [] 
-                    :: th [attr.width "50px" ] []
-                    :: List.map (fun (u: UserBasicInfo) -> th [attr.``class`` "rotate"] [div[] [span [] [text u.fullName]]]) users
+                    th [attr.width "150px" ] [text "Задача"] 
+                    :: th [attr.width "60px" ] [div[] [span [] [text "Лучшая краткость"]]]
+                    :: List.map (fun (u: UserBasicInfo) -> td [attr.``class`` "rotate"] [div[] [span [] [text u.fullName]]]) users
                 )
             head :: List.map makeRow (db.GetProblems ())
 

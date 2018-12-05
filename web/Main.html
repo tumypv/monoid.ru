@@ -26,7 +26,6 @@
             /* Set the fixed height of the footer here */
             height: 60px;
             background-color: #707070;
-            margin-top: 20px;
             margin-left: 50px;
             margin-right: 50px;
         }
@@ -45,27 +44,43 @@
             margin: auto;
         }
 
+            table.hall th {
+                border: 0px;
+                font-size:12px;
+                vertical-align:bottom;
+                font-family: sans-serif;
+                text-align: center;
+            }
+
             table.hall td {
                 border: 1px solid #ccc;
                 text-align: center;
             }
 
-            table.hall th.row-header {
-                border: 1px solid #ccc;
+            table.hall td.best-cons {
+                background-color: yellow;
             }
 
-            table.hall th.rotate {
+            table.hall .row-header {
+                border: 1px solid #000;
+                font-weight: normal;
+                background-color: #ccc;
+
+            }
+
+            table.hall .rotate {
+                border:0px;
                 width: 25px;
                 white-space: nowrap;
                 height: 120px;
                 vertical-align: bottom;
             }
 
-                table.hall th.rotate > div {
+                table.hall .rotate > div {
                     transform: translate(16px, -4px) rotate(315deg);
                 }
 
-                    table.hall th.rotate > div > span {
+                    table.hall .rotate > div > span {
                         text-align: left;
                         display: inline-block;
                         width: 150px;
@@ -230,7 +245,7 @@
             </table>
         </div>
 
-        <div ws-template="SolutionTemplate" style="margin-left:100px;margin-right:100px;margin-bottom:1000px;">
+        <div ws-template="SolutionTemplate" style="margin-left:50px;margin-right:50px;margin-bottom:1000px;">
             <h2>Исходный код решения</h2>
             <pre class="line-numbers"><code class="language-fsharp"><span ws-replace="MySolution"></span></code></pre>
             <pre>${Error}</pre>
@@ -249,13 +264,13 @@
                     <th width=30 style="text-align:right;">№</th>
                     <th width=200>Название</th>
                     <th width=100>Принято</th>
-                    <th width=100>Многословность</th>
+                    <th width=100>Краткость</th>
                 </tr>
                 <tr ws-template="MyProblemsTemplate" ws-replace="MyProblems">
                     <td style="text-align:right;">${ProblemN}</td>
                     <td><div ws-replace="ProblemTitle" /></td>
                     <td><div ws-replace="AcceptedSolution" /></td>
-                    <td style="text-align:right;">${Verbosity}</td>
+                    <td style="text-align:right;">${Conciseness}</td>
                 </tr>
             </table>
         </div>

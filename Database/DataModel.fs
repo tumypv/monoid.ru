@@ -52,7 +52,7 @@ module Problem =
         title: string
     }
     
-    type Verbosity = {
+    type Conciseness = {
         tokenCount: int
         literalLength: int
     }
@@ -66,7 +66,7 @@ module Problem =
         failedTest: int option
         error: string option                
         memory: int option
-        verbosity: Verbosity
+        conciseness: Conciseness
     }
 
     type Solution = {
@@ -91,7 +91,7 @@ module Problem =
     type HallOfFameRaw = {
         user: int
         problem: int
-        verbosity: Verbosity
+        conciseness: Conciseness
     }
 
 module Solution =
