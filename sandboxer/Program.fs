@@ -17,15 +17,17 @@ type Proxy () =
         with ex -> Console.Error.WriteLine(if ex.InnerException <> null then ex.InnerException.ToString() else ex.ToString()); 1
         
 
-let runInSandbox (workingDir: string) (assemblyFile: string) =
+let runInSandbox (workingDir: string) (assemblyFile: string) (isChecker: bool) =
     let permissionSet =
         let inputPath = Path.Combine (workingDir, "INPUT.TXT")
         let outputPath = Path.Combine (workingDir, "OUTPUT.TXT")
         let set = new PermissionSet(PermissionState.None)
-        //set.AddPermission (new CodeAccessPermission()) |> ignore
         set.AddPermission (new SecurityPermission(SecurityPermissionFlag.Execution)) |> ignore
         set.AddPermission (new FileIOPermission(FileIOPermissionAccess.Read, [| inputPath |])) |> ignore
-        set.AddPermission (new FileIOPermission(FileIOPermissionAccess.Write, [| outputPath |])) |> ignore
+        if isChecker then
+            set.AddPermission (new FileIOPermission(FileIOPermissionAccess.Read, [| outputPath |])) |> ignore
+        else
+            set.AddPermission (new FileIOPermission(FileIOPermissionAccess.Write, [| outputPath |])) |> ignore
         set
 
     let domain =
@@ -44,21 +46,4 @@ let runInSandbox (workingDir: string) (assemblyFile: string) =
 
 [<EntryPoint>]
 let main argv =
-    //let p = Process.GetCurrentProcess();
-    //let tfn o =
-    //    let rec watchdog () =
-    //        let mem = p.PeakVirtualMemorySize64
-    //        if mem > 16L * 1024L * 1024L then
-    //            System.Console.Error.WriteLine("Memory limit exceeded")
-    //            p.Kill()
-    //        System.Threading.Thread.Sleep(5)
-    //        watchdog()
-    //    watchdog()
-
-    //let t = new System.Threading.Thread(new ParameterizedThreadStart(tfn))
-    //t.Start()
-    
-    runInSandbox argv.[0] argv.[1]
-    
-    //let l = Seq.init (1024 * 1024 * 16) (fun a -> a) |> List.ofSeq
-    //printfn "%A" l
+    runInSandbox argv.[0] argv.[1] (argv.Length > 2 && argv.[2] = "checker")

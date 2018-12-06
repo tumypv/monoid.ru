@@ -4,37 +4,97 @@ open System.Diagnostics
 open monoid.Database
 open monoid.DataModel.Problem
 open Microsoft.FSharp.Compiler.SourceCodeServices
-
-let compilerPath = @"C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\Common7\IDE\CommonExtensions\Microsoft\FSharp\fsc.exe"
-
-let getProcessStartInfo exePath =
-    let startInfo = new ProcessStartInfo (exePath)
-    do startInfo.CreateNoWindow <- true
-    do startInfo.LoadUserProfile <- false
-    do startInfo.UseShellExecute <- false
-    do startInfo.RedirectStandardError <- true
-    do startInfo.RedirectStandardOutput <- true
-    do startInfo.RedirectStandardInput <- true
-    startInfo
+open System.Diagnostics
+open Microsoft.Extensions.Configuration
+open Microsoft.Extensions.Configuration.Json
 
 type OutputCheckResult = Accepted | PresentationError | WrongAnswer
 
-let checkSolutionOutput (test: Test) (solutionOutput: string) =
-    let tokenize (s: string) = 
-        let sep = [|' '; '\r'; '\n'|]
-        s.Split(sep, StringSplitOptions.RemoveEmptyEntries)
-    let testTokens = tokenize test.output
-    let outputTokens = tokenize solutionOutput
-    if testTokens.Length <> outputTokens.Length then
-        PresentationError
-    elif Seq.exists2 (<>) outputTokens testTokens then
-        WrongAnswer
-    else
-        Accepted
-
 type ExecutionResult = OutputReceived of string * int64 | MemoryLimitExceeded | TimeLimitExceeded | RuntimeError of string
 
-let runRestricted (startInfo: ProcessStartInfo) (memoryLimit: int64) (timeLimit: int64) (inputPath: string) (outputPath: string) : ExecutionResult =
+type BuildSuccess = { time : TimeSpan }
+type BuildError = { message : string }
+
+type BuildResult =
+    | Success of BuildSuccess 
+    | Error of BuildError 
+    | Timeout
+
+let config =
+    ConfigurationBuilder()
+        .SetBasePath(AppDomain.CurrentDomain.BaseDirectory)
+        .AddJsonFile("appsettings.json")
+        .Build()
+
+let private getAppSetting (section: string) (key: string) =
+    let section = config.GetSection(section)
+    section.GetValue(key, "")
+
+let compilerPath = getAppSetting "path" "compiler"
+let sandboxDir = getAppSetting "path" "sandboxdir"
+let sandboxerPath = getAppSetting "path" "sandboxer"
+let connectionString = config.GetConnectionString("monoid")
+
+if compilerPath = "" || not <| File.Exists compilerPath then 
+    failwith "F# compiler not found"
+if sandboxDir = "" || not <| Directory.Exists sandboxDir  then 
+    failwith "Sandbox dir not found"
+if sandboxerPath = "" || not <| File.Exists sandboxerPath then 
+    failwith "Sandboxer not found"
+
+Directory.SetCurrentDirectory sandboxDir
+
+let inputPath = Path.Combine (sandboxDir, "INPUT.TXT")
+let outputPath = Path.Combine (sandboxDir, "OUTPUT.TXT")
+let srcPath = Path.Combine (sandboxDir, "solution.fs")
+let exePath = Path.Combine (sandboxDir, "solution.exe")
+let checkerSrcPath = Path.Combine (sandboxDir, "checker.fs")
+let checkerExePath = Path.Combine (sandboxDir, "checker.exe")
+let fsharpCorePath = Path.Combine (sandboxDir, "FSharp.Core.dll")
+
+let cleanupSandboxDir () =
+    if not (Directory.Exists sandboxDir) then
+        failwith (sprintf "Sandbox dir '%s' doesn't exists" sandboxDir)
+    else
+        let entries = Directory.GetFiles(sandboxDir, "*.*", SearchOption.TopDirectoryOnly)
+        let delete (item: string) =
+            if not <| String.Equals (item, fsharpCorePath, StringComparison.InvariantCultureIgnoreCase)
+            then File.Delete item
+        Seq.iter delete entries
+
+let getProcessStartInfo exePath =
+    let startInfo = new ProcessStartInfo (exePath)
+    startInfo.CreateNoWindow <- true
+    startInfo.LoadUserProfile <- false
+    startInfo.UseShellExecute <- false
+    startInfo.RedirectStandardError <- true
+    startInfo.RedirectStandardOutput <- true
+    startInfo.RedirectStandardInput <- true
+    startInfo
+
+let buildExe srcPath outExePath =
+    let startInfo = getProcessStartInfo compilerPath
+
+    let nocopyfsharpcore =
+        if File.Exists fsharpCorePath then " --nocopyfsharpcore" else ""
+
+    startInfo.Arguments <- sprintf 
+        "--nologo --out:%s --target:exe --nointerfacedata --nowin32manifest --debug- --checked+ --preferreduilang:ru-ru --simpleresolution --noframework%s %s"
+        outExePath nocopyfsharpcore srcPath
+
+    let p = Process.Start (startInfo)
+    let exited = p.WaitForExit 10000
+
+    if not exited then 
+        p.Kill ()
+        Timeout
+    elif p.ExitCode = 0 then
+        Success { time = p.ExitTime - p.StartTime }
+    else
+        let output = p.StandardError.ReadToEnd().Trim()
+        Error { message = output }
+
+let runRestricted (startInfo: ProcessStartInfo) (memoryLimit: int64) (timeLimit: int64) (inputPath: string) (outputPath: string) (isChecker: bool) : ExecutionResult =
     use p = new Process()
 
     let kill () = 
@@ -50,9 +110,10 @@ let runRestricted (startInfo: ProcessStartInfo) (memoryLimit: int64) (timeLimit:
         else
             None
 
-    do p.StartInfo <- startInfo
-    do p.Start() |> ignore
-    do p.StandardInput.Write (File.ReadAllText(inputPath) + Environment.NewLine)
+    p.StartInfo <- startInfo
+    p.Start() |> ignore
+    if not isChecker then
+        p.StandardInput.Write (File.ReadAllText(inputPath) + Environment.NewLine)
 
     let sw = System.Diagnostics.Stopwatch.StartNew()
     
@@ -66,9 +127,9 @@ let runRestricted (startInfo: ProcessStartInfo) (memoryLimit: int64) (timeLimit:
             kill ()
             MemoryLimitExceeded
         elif p.HasExited then
-            if p.ExitCode > 0 then
+            if p.ExitCode <> 0 then
                 RuntimeError (p.StandardError.ReadToEnd ())
-            elif File.Exists (outputPath)
+            elif (not isChecker) && File.Exists (outputPath)
                 then OutputReceived (File.ReadAllText(outputPath), mem)
             else
                 let output = p.StandardOutput.ReadToEnd ()
@@ -81,58 +142,42 @@ let runRestricted (startInfo: ProcessStartInfo) (memoryLimit: int64) (timeLimit:
     let res = loop 0L
     res
 
-let runInSandbox (sandboxDir: string) (exePath: string) (solution: SolutionToCheck) (processTestResult: Test -> ExecutionResult -> bool) =
-    let sandboxerPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "sandboxer.exe")
-    let inputPath = Path.Combine (sandboxDir, "INPUT.TXT")
-    let outputPath = Path.Combine (sandboxDir, "OUTPUT.TXT")
-    let runTest (test: Test) =
-        let inputData = test.input.Replace("\n", Environment.NewLine)
-        do File.WriteAllText (inputPath, inputData)
-        let startInfo = getProcessStartInfo sandboxerPath
-        do startInfo.Arguments <- sprintf "\"%s\" \"%s\"" sandboxDir exePath
-        let testResult = runRestricted startInfo (solution.memory * 1024L * 1024L) (solution.time) inputPath outputPath 
-        do if (File.Exists outputPath) then File.Delete outputPath
-        do File.Delete inputPath
-        processTestResult test testResult
-
-    Array.forall runTest solution.tests
-
-type BuildSuccess = { time : TimeSpan }
-type BuildError = { message : string }
-
-type BuildResult =
-    | Success of BuildSuccess 
-    | Error of BuildError 
-    | Timeout
-
-let buildExe srcPath outExePath =
-    let startInfo = getProcessStartInfo compilerPath
-    startInfo.Arguments <- sprintf 
-        "--nologo --out:%s --target:exe --nointerfacedata --nowin32manifest --debug- --checked+ --preferreduilang:ru-ru --simpleresolution --noframework %s" 
-        outExePath srcPath
-
-    let p = Process.Start (startInfo)
-    let exited = p.WaitForExit 10000
-
-    if not exited then 
-        do p.Kill ()
-        Timeout
-    elif p.ExitCode = 0 then
-        Success { time = p.ExitTime - p.StartTime }
+let basicSolutionOutputChecker (test: Test) (solutionOutput: string) =
+    let tokenize (s: string) = 
+        let sep = [|' '; '\r'; '\n'|]
+        s.Split(sep, StringSplitOptions.RemoveEmptyEntries)
+    let testTokens = tokenize test.output
+    let outputTokens = tokenize solutionOutput
+    if testTokens.Length <> outputTokens.Length then
+        PresentationError
+    elif Seq.exists2 (<>) outputTokens testTokens then
+        WrongAnswer
     else
-        let output = p.StandardError.ReadToEnd().Trim()
-        Error { message = output }
+        Accepted
 
-let cleanupSandboxDir sandboxDir =
-    if not (Directory.Exists sandboxDir) then
-        failwith (sprintf "Sandbox dir '%s' doesn't exists" sandboxDir)
-    else
-        let entries = Directory.EnumerateFileSystemEntries(sandboxDir, "*.*", SearchOption.TopDirectoryOnly)
-        let delete (item: string) = 
-            if File.Exists item then File.Delete item
-            elif Directory.Exists item then Directory.Delete (item, true)
-        Seq.iter delete entries
+let customSolutionOutputChecker (test: Test) (solutionOutput: string) (checkerExePath: string) =
+    let inputData = test.input.Replace("\n", Environment.NewLine)
+    File.WriteAllText (inputPath, inputData)
+    File.WriteAllText (outputPath, solutionOutput)
+    let startInfo = getProcessStartInfo checkerExePath
+    startInfo.Arguments <- sprintf "\"%s\" \"%s\" checker" sandboxDir checkerExePath
+    let testResult = runRestricted startInfo (256L * 1024L * 1024L) (3L * 1000L) inputPath outputPath true
 
+    let r = 
+        match testResult with
+        | MemoryLimitExceeded ->
+            failwith "memory_limit_exceeded"
+        | TimeLimitExceeded ->
+            failwith "time_limit_exceeded"
+        | OutputReceived (o, mem) ->
+            match List.ofArray (o.Split(Environment.NewLine)) with
+            | "presentation_error" :: t -> PresentationError
+            | "wrong_answer" :: t -> WrongAnswer
+            | "accepted" :: t -> Accepted
+            | _ -> failwith "unknown checker output"
+        | RuntimeError s ->
+            failwith "runtime_error"
+    r
 
 let calcLengthScore (source: string) : int * int =
     let sourceTok = FSharpSourceTokenizer([], Some "")
@@ -172,14 +217,32 @@ let calcLengthScore (source: string) : int * int =
     
     codeTokens, literals
 
+let runSolutionInSandbox (solution: SolutionToCheck) (processTestResult: Test -> ExecutionResult -> bool) =
+    let runTest (test: Test) =
+        let inputData = test.input.Replace("\n", Environment.NewLine)
+        File.WriteAllText (inputPath, inputData)
+        if File.Exists outputPath then File.Delete outputPath
+        let startInfo = getProcessStartInfo sandboxerPath
+        startInfo.Arguments <- sprintf "\"%s\" \"%s\"" sandboxDir exePath
+        let testResult = runRestricted startInfo (solution.memory * 1024L * 1024L) (solution.time) inputPath outputPath false
+        processTestResult test testResult
+
+    Array.forall runTest solution.tests
+
+
 let check (db: DB) (solution: SolutionToCheck) =
-    let sandboxDir = Path.Combine (AppDomain.CurrentDomain.BaseDirectory, "sandbox")
-    do cleanupSandboxDir sandboxDir
-    
-    let srcPath = Path.Combine (sandboxDir, "solution.fs")
-    do File.WriteAllText (srcPath, solution.source)
-    let exePath = Path.Combine (sandboxDir, "solution.exe")
+    cleanupSandboxDir ()
+
+    File.WriteAllText (srcPath, solution.source)
     let buildResult = buildExe srcPath exePath
+
+    match solution.customChecker with
+    | Some checker ->
+        File.WriteAllText (checkerSrcPath, checker)
+        match buildExe checkerSrcPath checkerExePath with
+        | Success _ -> ()
+        | _ -> failwith "Failed to build checker"
+    | _ -> ()
 
     let processTestResult (test: Test) testResult =
         match testResult with
@@ -190,10 +253,14 @@ let check (db: DB) (solution: SolutionToCheck) =
             db.SaveTestResult solution.id test.id 0 "time_limit_exceeded" null
             false
         | OutputReceived (o, mem) ->
-            match checkSolutionOutput test o with
-            | Accepted -> db.SaveTestResult solution.id test.id mem "passed" o; true
-            | WrongAnswer -> db.SaveTestResult solution.id test.id mem "wrong_answer" o; false
-            | PresentationError -> db.SaveTestResult solution.id test.id mem "presentation_error" o; false
+            let checkResult =
+                match solution.customChecker with
+                | Some checker -> customSolutionOutputChecker test o checkerExePath
+                | None -> basicSolutionOutputChecker test o
+            match checkResult with
+                | Accepted -> db.SaveTestResult solution.id test.id mem "passed" o; true
+                | WrongAnswer -> db.SaveTestResult solution.id test.id mem "wrong_answer" o; false
+                | PresentationError -> db.SaveTestResult solution.id test.id mem "presentation_error" o; false
         | RuntimeError s ->
             db.SaveTestResult solution.id test.id 0 "runtime_error" s; false
 
@@ -201,7 +268,7 @@ let check (db: DB) (solution: SolutionToCheck) =
 
     match buildResult with
     | Success t ->
-        let passed = runInSandbox sandboxDir exePath solution processTestResult
+        let passed = runSolutionInSandbox solution processTestResult
         db.CheckSolutionEnd solution.id None tokenCount literalLength
     | Error e ->
         db.CheckSolutionEnd solution.id (Some e.message) tokenCount literalLength
@@ -209,7 +276,7 @@ let check (db: DB) (solution: SolutionToCheck) =
         db.CheckSolutionEnd solution.id None tokenCount literalLength
 
 let loop () =
-    use db = new DB "host=<your_db_host>;port=3306;user id=<your_checker_user>;password=<your_checker_password>;database=fsharp;"
+    use db = new DB(connectionString)
 
     let rec mainLoop () =
         let solution = db.CheckSolutionBegin ()
@@ -223,8 +290,7 @@ let loop () =
 
 [<EntryPoint>]
 let rec main argv =
-    try
-        loop()
-    with 
-    | :? System.Exception as ex   -> printfn "%s" ex.Message
+    try 
+        loop() 
+    with ex -> printfn "%s" ex.Message
     main argv

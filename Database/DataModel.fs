@@ -86,6 +86,7 @@ module Problem =
         memory: int64
         source: string
         id: int
+        customChecker: string option
     }
 
     type HallOfFameRaw = {
