@@ -3,7 +3,7 @@
 open WebSharper
 open WebSharper.Sitelets.InferRouter
 
-type OAuthProvider = VK | GitHub
+type OAuthProvider = VK | GitHub | Guest
 
 type EndPoint =
     | [<EndPoint "GET /">] Home
@@ -14,3 +14,5 @@ type EndPoint =
     | [<EndPoint "GET /halloffame">] HallOfFame
     | [<EndPoint "GET /oauth">] OAuth of provider: OAuthProvider
     | [<EndPoint "GET /logout">] Logout
+    | [<EndPoint "GET /guestlogin">] GuestLogin
+    

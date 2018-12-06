@@ -42,14 +42,11 @@ let private redirectEndpoint getUserData (ctx: Context<EndPoint>) response = asy
         return! Content.RedirectTemporary EndPoint.Home
 }
 
-let private getAppSetting (config: IConfiguration) (section: string) (key: string) =
-    let section = config.GetSection(section)
-    section.GetValue(key, "")
-
 module GitHub =
     open Database
     open WebSharper.OAuth.OAuth2
     open User
+    open Utils
 
     let service config = 
         ServiceSettings.Github(
@@ -76,6 +73,7 @@ module VK =
     open WebSharper.OAuth.OAuth2
     open Database
     open User
+    open Utils
 
     type private Response = {response : VkUser list}
 

@@ -65,4 +65,8 @@ type Site(config: IConfiguration) =
             | EndPoint.Logout -> return! LogoutPage ctx
             // This is already handled by Auth.Sitelet above:
             | EndPoint.OAuth _ -> return! Content.ServerError
+            | EndPoint.GuestLogin -> 
+                let guestId = Utils.getAppSetting config "general" "guest"
+                if guestId <> "" then do! ctx.UserSession.LoginUser (guestId)
+                return! Content.RedirectTemporaryToUrl "http://localhost:5000/myproblems"
         })
