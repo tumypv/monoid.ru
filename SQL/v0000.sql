@@ -1,4 +1,4 @@
-CREATE DATABASE IF NOT EXISTS `fsharp`
+CREATE DATABASE IF NOT EXISTS `fsharp`;
 USE `fsharp`;
 
 CREATE TABLE IF NOT EXISTS `chapter` (
@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS `chapter` (
 ) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 DELIMITER //
-CREATE DEFINER=`checker`@`%.khakasnet.ru` PROCEDURE `check_solution_begin`()
+CREATE PROCEDURE `check_solution_begin`()
     SQL SECURITY INVOKER
 BEGIN
     update
@@ -43,7 +43,7 @@ END//
 DELIMITER ;
 
 DELIMITER //
-CREATE DEFINER=`checker`@`%.khakasnet.ru` PROCEDURE `check_solution_end`(IN `solution` INT, IN `error` VARCHAR(250)
+CREATE PROCEDURE `check_solution_end`(IN `solution` INT, IN `error` VARCHAR(250)
 
 
 
@@ -63,7 +63,7 @@ END//
 DELIMITER ;
 
 DELIMITER //
-CREATE DEFINER=`checker`@`%.khakasnet.ru` PROCEDURE `createGitHubUser`(
+CREATE PROCEDURE `createGitHubUser`(
 	IN `login` VARCHAR(50),
 	IN `name` VARCHAR(50)
 )
@@ -83,7 +83,7 @@ END//
 DELIMITER ;
 
 DELIMITER //
-CREATE DEFINER=`checker`@`%.khakasnet.ru` PROCEDURE `createProblem`(
+CREATE PROCEDURE `createProblem`(
 	IN `title` VARCHAR(150),
 	IN `content` JSON
 )
@@ -96,7 +96,7 @@ END//
 DELIMITER ;
 
 DELIMITER //
-CREATE DEFINER=`checker`@`%.khakasnet.ru` PROCEDURE `createVkUser`(
+CREATE PROCEDURE `createVkUser`(
 	IN `id` int(11),
 	IN `first_name` VARCHAR(50),
 	IN `last_name` VARCHAR(50)
@@ -117,7 +117,7 @@ END//
 DELIMITER ;
 
 DELIMITER //
-CREATE DEFINER=`checker`@`%.khakasnet.ru` PROCEDURE `get_hall_of_fame`()
+CREATE PROCEDURE `get_hall_of_fame`()
     READS SQL DATA
     DETERMINISTIC
     SQL SECURITY INVOKER
@@ -133,7 +133,7 @@ END//
 DELIMITER ;
 
 DELIMITER //
-CREATE DEFINER=`checker`@`%.khakasnet.ru` PROCEDURE `get_problems`()
+CREATE PROCEDURE `get_problems`()
     READS SQL DATA
     DETERMINISTIC
     SQL SECURITY INVOKER
@@ -152,7 +152,7 @@ END//
 DELIMITER ;
 
 DELIMITER //
-CREATE DEFINER=`checker`@`%.khakasnet.ru` PROCEDURE `get_solution`(IN `solution_id` INT
+CREATE PROCEDURE `get_solution`(IN `solution_id` INT
 
 )
     READS SQL DATA
@@ -187,7 +187,7 @@ END//
 DELIMITER ;
 
 DELIMITER //
-CREATE DEFINER=`checker`@`%.khakasnet.ru` PROCEDURE `get_solution_state`(
+CREATE PROCEDURE `get_solution_state`(
 	IN `solution_id` INT
 )
     READS SQL DATA
@@ -198,7 +198,7 @@ END//
 DELIMITER ;
 
 DELIMITER //
-CREATE DEFINER=`checker`@`%.khakasnet.ru` PROCEDURE `get_users`()
+CREATE PROCEDURE `get_users`()
     READS SQL DATA
     DETERMINISTIC
     SQL SECURITY INVOKER
@@ -208,7 +208,7 @@ END//
 DELIMITER ;
 
 DELIMITER //
-CREATE DEFINER=`checker`@`%.khakasnet.ru` PROCEDURE `get_user_solutions`(IN `user_id` INT)
+CREATE PROCEDURE `get_user_solutions`(IN `user_id` INT)
     READS SQL DATA
     DETERMINISTIC
     SQL SECURITY INVOKER
@@ -247,7 +247,7 @@ END//
 DELIMITER ;
 
 DELIMITER //
-CREATE DEFINER=`checker`@`%.khakasnet.ru` PROCEDURE `get_user_solutions_for_problem`(IN `user_id` INT, IN `problem_id` INT)
+CREATE PROCEDURE `get_user_solutions_for_problem`(IN `user_id` INT, IN `problem_id` INT)
     SQL SECURITY INVOKER
 BEGIN
 select 
@@ -288,7 +288,7 @@ CREATE TABLE IF NOT EXISTS `problem` (
 ) ENGINE=InnoDB AUTO_INCREMENT=34 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 DELIMITER //
-CREATE DEFINER=`checker`@`%.khakasnet.ru` PROCEDURE `save_test_result`(
+CREATE PROCEDURE `save_test_result`(
 	IN `solution` INT,
 	IN `test` INT,
 	IN `memory` INT,
@@ -331,7 +331,7 @@ CREATE TABLE `solution_summary` (
 ) ENGINE=MyISAM;
 
 DELIMITER //
-CREATE DEFINER=`checker`@`%.khakasnet.ru` PROCEDURE `submit_solution`(
+CREATE PROCEDURE `submit_solution`(
 	IN `user` INT,
 	IN `problem` INT,
 	IN `source` TEXT
@@ -369,7 +369,7 @@ CREATE TABLE IF NOT EXISTS `test_result` (
 ) ENGINE=InnoDB AUTO_INCREMENT=3319 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 DELIMITER //
-CREATE DEFINER=`checker`@`%.khakasnet.ru` PROCEDURE `updateProblem`(
+CREATE PROCEDURE `updateProblem`(
 	IN `id` int(11),
 	IN `title` VARCHAR(150),
 	IN `content` JSON
@@ -407,4 +407,4 @@ CREATE TABLE IF NOT EXISTS `user_vk` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 DROP TABLE IF EXISTS `solution_summary`;
-CREATE ALGORITHM=UNDEFINED DEFINER=`checker`@`%.khakasnet.ru` SQL SECURITY DEFINER VIEW `solution_summary` AS select `s`.`id` AS `id`,`s`.`user` AS `user`,`s`.`problem` AS `problem`,`s`.`server_time` AS `submitDate`,coalesce(`s`.`compilation_error`,if((`tr`.`result` = 'runtime_error'),`tr`.`output`,NULL)) AS `error`,coalesce(if((`s`.`state` = 'checked'),NULL,`s`.`state`),if(isnull(`s`.`compilation_error`),NULL,'compilation_error'),`tr`.`result`,'accepted') AS `verdict`,`t`.`n` AS `failedTest`,(select max(`tr`.`memory`) from `test_result` `tr` where ((`tr`.`result` = 'passed') and (`tr`.`solution` = `s`.`id`))) AS `memory`,`s`.`token_count` AS `token_count`,`s`.`literal_length` AS `literal_length` from ((`solution` `s` left join `test_result` `tr` on(((`s`.`id` = `tr`.`solution`) and (`tr`.`result` <> 'passed')))) left join `test` `t` on((`tr`.`test` = `t`.`id`)));
+CREATE ALGORITHM=UNDEFINED SQL SECURITY DEFINER VIEW `solution_summary` AS select `s`.`id` AS `id`,`s`.`user` AS `user`,`s`.`problem` AS `problem`,`s`.`server_time` AS `submitDate`,coalesce(`s`.`compilation_error`,if((`tr`.`result` = 'runtime_error'),`tr`.`output`,NULL)) AS `error`,coalesce(if((`s`.`state` = 'checked'),NULL,`s`.`state`),if(isnull(`s`.`compilation_error`),NULL,'compilation_error'),`tr`.`result`,'accepted') AS `verdict`,`t`.`n` AS `failedTest`,(select max(`tr`.`memory`) from `test_result` `tr` where ((`tr`.`result` = 'passed') and (`tr`.`solution` = `s`.`id`))) AS `memory`,`s`.`token_count` AS `token_count`,`s`.`literal_length` AS `literal_length` from ((`solution` `s` left join `test_result` `tr` on(((`s`.`id` = `tr`.`solution`) and (`tr`.`result` <> 'passed')))) left join `test` `t` on((`tr`.`test` = `t`.`id`)));
